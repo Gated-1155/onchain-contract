@@ -1,57 +1,59 @@
-# Sample Hardhat 3 Project (`mocha` and `ethers`)
+# BadgeToken — ERC-1155 배지 dApp (ethers + mocha 버전)
 
-This project showcases a Hardhat 3 project using `mocha` for tests and the `ethers` library for Ethereum interactions.
+`../erc-1155`(viem + `node:test`)와 동일한 `BadgeToken` 컨트랙트를, **ethers.js + Mocha/Chai** 스택으로 그대로 옮겨 쓴 비교/학습용 프로젝트. 컨트랙트 로직(`contracts/BadgeToken.sol`)은 완전히 동일하고, 달라지는 건 테스트/스크립트가 체인과 상호작용하는 방식뿐이다.
 
-To learn more about Hardhat 3, please visit the [Getting Started guide](https://hardhat.org/docs/getting-started#getting-started-with-hardhat-3). To share your feedback, join our [Hardhat 3](https://hardhat.org/hardhat3-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new) in our GitHub issue tracker.
+> 이 프로젝트는 아직 어떤 네트워크에도 배포되지 않았다. 실제 라이브 배포·Notion 설계 문서·전송 경로 조사·실패 시나리오 문서는 전부 `../erc-1155`가 원본이다.
 
-## Project Overview
+## 프로젝트 구성
 
-This example project includes:
-
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
-- TypeScript integration tests using `mocha` and ethers.js
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
-
-## Usage
-
-### Running Tests
-
-To run all the tests in the project, execute the following command:
-
-```shell
-npx hardhat test
+```
+contracts/BadgeToken.sol             ERC-1155 배지 컨트랙트 (전송·승인 전면 차단, erc-1155와 동일)
+contracts/test/MaliciousReceiver.sol 재진입 공격 재현용 테스트 전용 컨트랙트
+test/BadgeToken.ts                   정상 동작 검증 (ethers + mocha + chai)
+test/BadgeToken.failureScenarios.ts  실패 시나리오 재현 테스트
+scripts/deploy.ts                    Amoy 배포 스크립트
+scripts/check-amoy-network.ts        Amoy RPC 연결 확인
+scripts/check-balance.ts             배포자 잔액 확인
+scripts/estimate-deploy-gas.ts       배포/민팅 gas 비용 추정
 ```
 
-You can also selectively run the Solidity or `mocha` tests:
+## erc-1155(viem)와 다른 점 — 비교 포인트
+
+| | erc-1155 | onchain-contract |
+| --- | --- | --- |
+| 체인 클라이언트 | viem | ethers.js v6 |
+| 테스트 러너 | `node:test` | Mocha |
+| 단언(assertion) | `viem.assertions.*` | chai (`expect(...).to.be.revertedWithCustomError(...)`) |
+| write 호출 | `contract.write.fn([args], {account})` | `contract.connect(signer).fn(...args)` |
+| read 호출 | `contract.read.fn([args])` | `contract.fn(...args)` |
+| 이벤트/에러 인자 매칭 | 배열로 전체 비교 | `.withArgs(...)` 체이닝, 동적 값은 `anyValue` |
+
+## 사용법
+
+### 테스트
 
 ```shell
-npx hardhat test solidity
-npx hardhat test mocha
+npm test          # 전체 (Solidity + TypeScript)
+npm run test:ts    # TypeScript(mocha)만
+npm run test:sol   # Solidity만
 ```
 
-### Make a deployment to Sepolia
-
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
-
-To run the deployment to a local chain:
+### 타입 체크
 
 ```shell
-npx hardhat ignition deploy ignition/modules/Counter.ts
+npm run typecheck
 ```
 
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
+### Amoy 배포 (아직 실행 안 함)
 
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
-
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
+`.env`에 `AMOY_RPC_URL`, `PRIVATE_KEY` 필요. `BADGE_ADMIN_ADDRESS`/`BADGE_PAUSER_ADDRESS`/`BADGE_MINTER_ADDRESS`는 선택 사항 — 안 정하면 배포자 주소로 기본 설정됨.
 
 ```shell
-npx hardhat keystore set SEPOLIA_PRIVATE_KEY
+npm run deploy:amoy
 ```
 
-After setting the variable, you can run the deployment with the Sepolia network:
+### Polygonscan/Sourcify 검증
 
 ```shell
-npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
+npx hardhat verify --network amoy <주소> <defaultAdmin> <pauser> <minter>
 ```
