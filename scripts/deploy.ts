@@ -12,6 +12,17 @@ function envAddressOrDefault(name: string, fallback: string): string {
   return value;
 }
 
+// Metadata for badges A/B/C lives in this repo's own metadata/ directory
+// (not the metadata-test repo erc-1155 points at) - resolves once this repo
+// is made public, via raw.githubusercontent.com against the default branch.
+// Registering these right after deploy skips the manual admin-panel step
+// for the three badges every deployment needs anyway.
+const KNOWN_BADGES = [
+  { uri: "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/1.json", transferable: false },
+  { uri: "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/2.json", transferable: false },
+  { uri: "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/3.json", transferable: true },
+] as const;
+
 async function main() {
   const { ethers } = await network.getOrCreate({ network: "amoy" });
   const [deployer] = await ethers.getSigners();
@@ -34,6 +45,24 @@ async function main() {
   const badgeAddress = await badge.getAddress();
 
   console.log(`\nBadgeToken deployed -> ${badgeAddress}`);
+
+  // Only the deployer's own wallet is signing this script - it can only
+  // register badge types if it actually holds DEFAULT_ADMIN_ROLE, i.e. no
+  // custom BADGE_ADMIN_ADDRESS was set for this deployment.
+  if (defaultAdmin.toLowerCase() === deployer.address.toLowerCase()) {
+    console.log(`\nRegistering known badge types (A/B/C)...`);
+    for (const { uri, transferable } of KNOWN_BADGES) {
+      const tx = await badge.createBadgeType(uri, transferable);
+      await tx.wait();
+      console.log(`  registered: ${uri} (transferable=${transferable})`);
+    }
+  } else {
+    console.log(
+      `\nSkipping auto-registration of A/B/C: BADGE_ADMIN_ADDRESS differs from the deployer, ` +
+        `so this script can't sign as admin. Register them manually from the admin panel instead.`,
+    );
+  }
+
   console.log(`\nVerify on Polygonscan:`);
   console.log(
     `  npx hardhat verify --network amoy ${badgeAddress} ${defaultAdmin} ${pauser} ${minter}`,

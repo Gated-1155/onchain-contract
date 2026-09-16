@@ -1,0 +1,8 @@
+{
+  "name": "Badge E",
+  "description": "onchain-toy badge E",
+  "image": "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/images/e.svg",
+  "attributes": [
+    { "trait_type": "Letter", "value": "E" }
+  ]
+}
