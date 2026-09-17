@@ -65,9 +65,9 @@ contract BadgeToken is ERC1155, AccessControl, ERC1155Pausable, ERC1155Burnable 
         _unpause();
     }
 
-    function mint(address account, uint256 id, uint256 amount, bytes memory data) public onlyRole(MINTER_ROLE) {
+    function mint(address to, uint256 id, uint256 amount, bytes memory data) public onlyRole(MINTER_ROLE) {
         if (!_badgeTypes[id].exists) revert BadgeTypeDoesNotExist(id);
-        _mint(account, id, amount, data);
+        _mint(to, id, amount, data);
     }
 
     function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) public onlyRole(MINTER_ROLE) {
