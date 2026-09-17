@@ -1,4 +1,5 @@
 import { network } from "hardhat";
+import type { BadgeToken } from "../types/ethers-contracts/index.js";
 
 // BADGE_ADMIN_ADDRESS / BADGE_PAUSER_ADDRESS / BADGE_MINTER_ADDRESS are optional —
 // unset ones default to the deployer's own address, since this project has no
@@ -22,6 +23,26 @@ const KNOWN_BADGES = [
   { uri: "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/2.json", transferable: false },
   { uri: "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/3.json", transferable: true },
 ] as const;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Amoy's public RPC has repeatedly proven flaky mid-session (this exact loop
+// hit a one-off revert on an otherwise-valid call once already) - retry a
+// few times with a short delay before giving up on a single badge, instead
+// of failing the whole deploy run over a transient hiccup.
+async function createBadgeTypeWithRetry(badge: BadgeToken, uri: string, transferable: boolean, attempts = 3) {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const tx = await badge.createBadgeType(uri, transferable);
+      await tx.wait();
+      return;
+    } catch (error) {
+      if (attempt === attempts) throw error;
+      console.log(`  attempt ${attempt} failed, retrying in 3s...`);
+      await sleep(3000);
+    }
+  }
+}
 
 async function main() {
   const { ethers } = await network.getOrCreate({ network: "amoy" });
@@ -52,8 +73,7 @@ async function main() {
   if (defaultAdmin.toLowerCase() === deployer.address.toLowerCase()) {
     console.log(`\nRegistering known badge types (A/B/C)...`);
     for (const { uri, transferable } of KNOWN_BADGES) {
-      const tx = await badge.createBadgeType(uri, transferable);
-      await tx.wait();
+      await createBadgeTypeWithRetry(badge, uri, transferable);
       console.log(`  registered: ${uri} (transferable=${transferable})`);
     }
   } else {
