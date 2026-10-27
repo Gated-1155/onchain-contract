@@ -35,3 +35,5 @@
 .agents
 CLAUDE.md
 AGENTS.md
+.idea/
+.DS_Store
