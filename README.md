@@ -6,10 +6,10 @@
 
 ## Polygon Amoy 배포 정보
 
-- **컨트랙트 주소**: [`0x7554b97a7c58dDccc03D5fBFB83DD0710696F59B`](https://amoy.polygonscan.com/address/0x7554b97a7c58dDccc03D5fBFB83DD0710696F59B)
+- **컨트랙트 주소**: [`0x4a69e03529aDDC8bEfB827F27cbADd6beF645Cf2`](https://amoy.polygonscan.com/address/0x4a69e03529aDDC8bEfB827F27cbADd6beF645Cf2)
 - **배포 스크립트**: `scripts/deploy.ts` (`npm run deploy:amoy`) — 배포 직후 A(id=1)/B(id=2)/C(id=3) 자동 등록까지 완료된 상태. `transferable`은 배지 타입별이 아니라 컨트랙트 전체에 걸린 단일 스위치이며 기본값 `false`(전송 불가) — 필요 시 관리자 패널에서 한 번에 켠다.
-- **생성자 인자**: `defaultAdmin`/`pauser`/`minter` 전부 배포자 본인 주소(`0x37a3Ed7De6C55C86bc6Bec6035e36885Ab405f80`)로 동일 설정
-- **검증 상태**: Sourcify 검증 완료. Sourcify 리포지토리: https://sourcify.dev/server/repo-ui/80002/0x7554b97a7c58dDccc03D5fBFB83DD0710696F59B
+- **생성자 인자**: `defaultAdmin`은 배포자 본인 주소(`0x37a3Ed7De6C55C86bc6Bec6035e36885Ab405f80`), `pauser`(`0x21B10A14171713F687558C010003BdAA710AC613`)와 `minter`(`0x165FfcdCd59052100E438332078198fEA23D3aBB`)는 `.env`의 `BADGE_PAUSER_ADDRESS`/`BADGE_MINTER_ADDRESS`로 지정한 별도 주소
+- **검증 상태**: Sourcify 검증 완료. Sourcify 리포지토리: https://sourcify.dev/server/repo-ui/80002/0x4a69e03529aDDC8bEfB827F27cbADd6beF645Cf2
 - **주의**: `scripts/deploy.ts`는 Ignition이 아니라 일반 스크립트라 재배포 시 새 주소가 생김(journal 없음).
 
 ## 프로젝트 구성

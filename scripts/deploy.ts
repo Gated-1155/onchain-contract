@@ -19,9 +19,9 @@ function envAddressOrDefault(name: string, fallback: string): string {
 // Registering these right after deploy skips the manual admin-panel step
 // for the three badges every deployment needs anyway.
 const KNOWN_BADGES = [
-  "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/1.json",
-  "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/2.json",
-  "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/3.json",
+  "https://raw.githubusercontent.com/Gated-1155/onchain-contract/main/metadata/1.json",
+  "https://raw.githubusercontent.com/Gated-1155/onchain-contract/main/metadata/2.json",
+  "https://raw.githubusercontent.com/Gated-1155/onchain-contract/main/metadata/3.json",
 ] as const;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
