@@ -39,7 +39,7 @@ describe("BadgeToken failure scenarios", function () {
       // multisig/timelock holding a backup). The contract is not upgradeable
       // (UUPS is explicitly out of scope), so this is permanent for this
       // deployment.
-      await expect(badge.connect(admin).createBadgeType("https://example.com/badge-1.json", false))
+      await expect(badge.connect(admin).createBadgeType("https://example.com/badge-1.json"))
         .to.be.revertedWithCustomError(badge, "AccessControlUnauthorizedAccount")
         .withArgs(admin.address, DEFAULT_ADMIN_ROLE);
 
@@ -52,7 +52,7 @@ describe("BadgeToken failure scenarios", function () {
   describe("Scenario: mintBatch called with malformed input", function () {
     it("reverts the whole call when ids/amounts array lengths don't match", async function () {
       const { badge, admin, minter, alice } = await networkHelpers.loadFixture(deployBadgeToken);
-      await badge.connect(admin).createBadgeType("https://example.com/badge-1.json", false);
+      await badge.connect(admin).createBadgeType("https://example.com/badge-1.json");
 
       await expect(badge.connect(minter).mintBatch(alice.address, [1n], [1n, 2n], "0x"))
         .to.be.revertedWithCustomError(badge, "ERC1155InvalidArrayLength")
@@ -61,7 +61,7 @@ describe("BadgeToken failure scenarios", function () {
 
     it("reverts the whole batch (mints nothing) when one id among several was never registered", async function () {
       const { badge, admin, minter, alice } = await networkHelpers.loadFixture(deployBadgeToken);
-      await badge.connect(admin).createBadgeType("https://example.com/badge-1.json", false);
+      await badge.connect(admin).createBadgeType("https://example.com/badge-1.json");
       // id 2 is intentionally never registered.
 
       await expect(badge.connect(minter).mintBatch(alice.address, [1n, 2n], [5n, 5n], "0x"))
@@ -73,28 +73,11 @@ describe("BadgeToken failure scenarios", function () {
     });
   });
 
-  describe("Fixed: uri() and isTransferable() now agree on how to report an unregistered id", function () {
-    it("both revert with BadgeTypeDoesNotExist for the same unregistered id", async function () {
-      // Previously isTransferable() silently returned `false` for an
-      // unregistered id instead of reverting like uri() does, so a caller
-      // couldn't tell "registered and non-transferable" apart from "never
-      // registered" without also calling uri(). Fixed 2026-09-14.
-      const { badge } = await networkHelpers.loadFixture(deployBadgeToken);
-
-      await expect(badge.uri(99n))
-        .to.be.revertedWithCustomError(badge, "BadgeTypeDoesNotExist")
-        .withArgs(99n);
-
-      await expect(badge.isTransferable(99n))
-        .to.be.revertedWithCustomError(badge, "BadgeTypeDoesNotExist")
-        .withArgs(99n);
-    });
-  });
-
   describe("Scenario: malicious ERC-1155 receiver reenters during onERC1155Received", function () {
     it("cannot double-spend or observe a stale balance, because _update commits state before the hook fires", async function () {
       const { badge, admin, minter, alice } = await networkHelpers.loadFixture(deployBadgeToken);
-      await badge.connect(admin).createBadgeType("https://example.com/badge-1.json", true);
+      await badge.connect(admin).createBadgeType("https://example.com/badge-1.json");
+      await badge.connect(admin).setTransferable(true);
 
       const attacker = await ethers.deployContract("MaliciousReceiver");
       await badge.connect(minter).mint(alice.address, 1n, 5n, "0x");
@@ -128,7 +111,8 @@ describe("BadgeToken failure scenarios", function () {
 
     it("cannot conjure extra balance: reentrant transfer of more than was actually received reverts", async function () {
       const { badge, admin, minter, alice } = await networkHelpers.loadFixture(deployBadgeToken);
-      await badge.connect(admin).createBadgeType("https://example.com/badge-1.json", true);
+      await badge.connect(admin).createBadgeType("https://example.com/badge-1.json");
+      await badge.connect(admin).setTransferable(true);
 
       const attacker = await ethers.deployContract("MaliciousReceiver");
       await badge.connect(minter).mint(alice.address, 1n, 5n, "0x");
@@ -150,7 +134,8 @@ describe("BadgeToken failure scenarios", function () {
 
     it("cannot steal an unrelated holder's balance — no approval exists regardless of reentrancy timing", async function () {
       const { badge, admin, minter, alice, bob } = await networkHelpers.loadFixture(deployBadgeToken);
-      await badge.connect(admin).createBadgeType("https://example.com/badge-1.json", true);
+      await badge.connect(admin).createBadgeType("https://example.com/badge-1.json");
+      await badge.connect(admin).setTransferable(true);
 
       const attacker = await ethers.deployContract("MaliciousReceiver");
 

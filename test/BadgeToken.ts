@@ -17,36 +17,37 @@ describe("BadgeToken", function () {
     return { badge, admin, pauser, minter, alice, bob, operator };
   }
 
-  // Convenience: register one badge type and (optionally) mint it to `to`.
+  // Convenience: register one badge type. Transferability is a single
+  // contract-wide switch (not per badge type), so it's set separately via
+  // setTransferable() wherever a test needs it on.
   async function createBadgeType(
     badge: Awaited<ReturnType<typeof deployBadgeToken>>["badge"],
     admin: Awaited<ReturnType<typeof deployBadgeToken>>["admin"],
     uri: string,
-    transferable: boolean,
   ) {
-    await badge.connect(admin).createBadgeType(uri, transferable);
+    await badge.connect(admin).createBadgeType(uri);
   }
 
   describe("Badge ID sequencing (createBadgeType)", function () {
     it("issues sequential ids starting at 1", async function () {
       const { badge, admin } = await networkHelpers.loadFixture(deployBadgeToken);
 
-      await expect(badge.connect(admin).createBadgeType("https://example.com/badge-1.json", false))
+      await expect(badge.connect(admin).createBadgeType("https://example.com/badge-1.json"))
         .to.emit(badge, "BadgeTypeCreated")
-        .withArgs(1n, "https://example.com/badge-1.json", false);
+        .withArgs(1n, "https://example.com/badge-1.json");
 
-      await expect(badge.connect(admin).createBadgeType("https://example.com/badge-2.json", true))
+      await expect(badge.connect(admin).createBadgeType("https://example.com/badge-2.json"))
         .to.emit(badge, "BadgeTypeCreated")
-        .withArgs(2n, "https://example.com/badge-2.json", true);
+        .withArgs(2n, "https://example.com/badge-2.json");
 
-      expect(await badge.isTransferable(1n)).to.equal(false);
-      expect(await badge.isTransferable(2n)).to.equal(true);
+      expect(await badge.uri(1n)).to.equal("https://example.com/badge-1.json");
+      expect(await badge.uri(2n)).to.equal("https://example.com/badge-2.json");
     });
 
     it("rejects createBadgeType from a non-admin account", async function () {
       const { badge, alice } = await networkHelpers.loadFixture(deployBadgeToken);
 
-      await expect(badge.connect(alice).createBadgeType("x", false))
+      await expect(badge.connect(alice).createBadgeType("x"))
         .to.be.revertedWithCustomError(badge, "AccessControlUnauthorizedAccount")
         .withArgs(alice.address, anyValue);
     });
@@ -55,7 +56,7 @@ describe("BadgeToken", function () {
   describe("Metadata URI", function () {
     it("returns the per-id URI registered at creation", async function () {
       const { badge, admin } = await networkHelpers.loadFixture(deployBadgeToken);
-      await createBadgeType(badge, admin, "https://example.com/badge-1.json", false);
+      await createBadgeType(badge, admin, "https://example.com/badge-1.json");
 
       expect(await badge.uri(1n)).to.equal("https://example.com/badge-1.json");
     });
@@ -72,7 +73,7 @@ describe("BadgeToken", function () {
       const { badge, admin } = await networkHelpers.loadFixture(deployBadgeToken);
 
       await expect(
-        badge.connect(admin).createBadgeType("ftp://example.com/badge.json", false),
+        badge.connect(admin).createBadgeType("ftp://example.com/badge.json"),
       ).to.be.revertedWithCustomError(badge, "InvalidUri");
     });
 
@@ -80,7 +81,7 @@ describe("BadgeToken", function () {
       const { badge, admin } = await networkHelpers.loadFixture(deployBadgeToken);
 
       await expect(
-        badge.connect(admin).createBadgeType("https://example.com/badge.png", false),
+        badge.connect(admin).createBadgeType("https://example.com/badge.png"),
       ).to.be.revertedWithCustomError(badge, "InvalidUri");
     });
 
@@ -88,7 +89,7 @@ describe("BadgeToken", function () {
       const { badge, admin } = await networkHelpers.loadFixture(deployBadgeToken);
 
       await expect(
-        badge.connect(admin).createBadgeType("123", false),
+        badge.connect(admin).createBadgeType("123"),
       ).to.be.revertedWithCustomError(badge, "InvalidUri");
     });
   });
@@ -96,7 +97,7 @@ describe("BadgeToken", function () {
   describe("Minting", function () {
     it("mints a registered badge id to a recipient", async function () {
       const { badge, admin, minter, alice } = await networkHelpers.loadFixture(deployBadgeToken);
-      await createBadgeType(badge, admin, "https://example.com/badge-1.json", false);
+      await createBadgeType(badge, admin, "https://example.com/badge-1.json");
 
       await badge.connect(minter).mint(alice.address, 1n, 3n, "0x");
 
@@ -113,7 +114,7 @@ describe("BadgeToken", function () {
 
     it("rejects minting from a non-minter account", async function () {
       const { badge, admin, alice } = await networkHelpers.loadFixture(deployBadgeToken);
-      await createBadgeType(badge, admin, "https://example.com/badge-1.json", false);
+      await createBadgeType(badge, admin, "https://example.com/badge-1.json");
 
       await expect(badge.connect(alice).mint(alice.address, 1n, 1n, "0x"))
         .to.be.revertedWithCustomError(badge, "AccessControlUnauthorizedAccount")
@@ -122,9 +123,9 @@ describe("BadgeToken", function () {
   });
 
   describe("Transfer blocking (core requirement)", function () {
-    it("blocks a direct safeTransferFrom on a non-transferable badge", async function () {
+    it("blocks a direct safeTransferFrom while the global switch is off", async function () {
       const { badge, admin, minter, alice, bob } = await networkHelpers.loadFixture(deployBadgeToken);
-      await createBadgeType(badge, admin, "https://example.com/badge-1.json", false);
+      await createBadgeType(badge, admin, "https://example.com/badge-1.json");
       await badge.connect(minter).mint(alice.address, 1n, 1n, "0x");
 
       await expect(
@@ -137,9 +138,10 @@ describe("BadgeToken", function () {
       expect(await badge.balanceOf(alice.address, 1n)).to.equal(1n);
     });
 
-    it("allows safeTransferFrom on a transferable badge", async function () {
+    it("allows safeTransferFrom once the global switch is on", async function () {
       const { badge, admin, minter, alice, bob } = await networkHelpers.loadFixture(deployBadgeToken);
-      await createBadgeType(badge, admin, "https://example.com/badge-1.json", true);
+      await createBadgeType(badge, admin, "https://example.com/badge-1.json");
+      await badge.connect(admin).setTransferable(true);
       await badge.connect(minter).mint(alice.address, 1n, 1n, "0x");
 
       await badge.connect(alice).safeTransferFrom(alice.address, bob.address, 1n, 1n, "0x");
@@ -148,18 +150,17 @@ describe("BadgeToken", function () {
       expect(await badge.balanceOf(bob.address, 1n)).to.equal(1n);
     });
 
-    it("blocks safeBatchTransferFrom entirely if any single id in the batch is non-transferable", async function () {
+    it("blocks safeBatchTransferFrom entirely (atomically) while the global switch is off, across every id in the batch", async function () {
       const { badge, admin, minter, alice, bob } = await networkHelpers.loadFixture(deployBadgeToken);
-      // id 1: transferable, id 2: non-transferable
-      await createBadgeType(badge, admin, "https://example.com/badge-1.json", true);
-      await createBadgeType(badge, admin, "https://example.com/badge-2.json", false);
+      await createBadgeType(badge, admin, "https://example.com/badge-1.json");
+      await createBadgeType(badge, admin, "https://example.com/badge-2.json");
       await badge.connect(minter).mintBatch(alice.address, [1n, 2n], [1n, 1n], "0x");
 
       await expect(
         badge.connect(alice).safeBatchTransferFrom(alice.address, bob.address, [1n, 2n], [1n, 1n], "0x"),
       )
         .to.be.revertedWithCustomError(badge, "BadgeNotTransferable")
-        .withArgs(2n);
+        .withArgs(1n);
 
       // neither id moved — the whole batch reverted atomically
       expect(await badge.balanceOf(alice.address, 1n)).to.equal(1n);
@@ -186,10 +187,11 @@ describe("BadgeToken", function () {
         .withArgs(operator.address, alice.address);
     });
 
-    it("reflects a setTransferable toggle on the very next transfer attempt", async function () {
+    it("reflects a setTransferable toggle on the very next transfer attempt, for every badge id at once", async function () {
       const { badge, admin, minter, alice, bob } = await networkHelpers.loadFixture(deployBadgeToken);
-      await createBadgeType(badge, admin, "https://example.com/badge-1.json", false);
-      await badge.connect(minter).mint(alice.address, 1n, 1n, "0x");
+      await createBadgeType(badge, admin, "https://example.com/badge-1.json");
+      await createBadgeType(badge, admin, "https://example.com/badge-2.json");
+      await badge.connect(minter).mintBatch(alice.address, [1n, 2n], [1n, 1n], "0x");
 
       await expect(
         badge.connect(alice).safeTransferFrom(alice.address, bob.address, 1n, 1n, "0x"),
@@ -197,29 +199,32 @@ describe("BadgeToken", function () {
         .to.be.revertedWithCustomError(badge, "BadgeNotTransferable")
         .withArgs(1n);
 
-      await expect(badge.connect(admin).setTransferable(1n, true))
-        .to.emit(badge, "BadgeTransferabilityUpdated")
-        .withArgs(1n, true);
+      await expect(badge.connect(admin).setTransferable(true))
+        .to.emit(badge, "TransferabilityUpdated")
+        .withArgs(true);
 
+      // both ids are transferable now, not just the one that was tested above
       await badge.connect(alice).safeTransferFrom(alice.address, bob.address, 1n, 1n, "0x");
+      await badge.connect(alice).safeTransferFrom(alice.address, bob.address, 2n, 1n, "0x");
 
       expect(await badge.balanceOf(bob.address, 1n)).to.equal(1n);
+      expect(await badge.balanceOf(bob.address, 2n)).to.equal(1n);
     });
   });
 
   describe("Mint / burn bypass the transferable check", function () {
-    it("mints a non-transferable badge without reverting", async function () {
+    it("mints a badge without reverting while the global switch is off", async function () {
       const { badge, admin, minter, alice } = await networkHelpers.loadFixture(deployBadgeToken);
-      await createBadgeType(badge, admin, "https://example.com/badge-1.json", false);
+      await createBadgeType(badge, admin, "https://example.com/badge-1.json");
 
       await badge.connect(minter).mint(alice.address, 1n, 1n, "0x");
 
       expect(await badge.balanceOf(alice.address, 1n)).to.equal(1n);
     });
 
-    it("lets the holder burn their own non-transferable badge", async function () {
+    it("lets the holder burn their own badge while the global switch is off", async function () {
       const { badge, admin, minter, alice } = await networkHelpers.loadFixture(deployBadgeToken);
-      await createBadgeType(badge, admin, "https://example.com/badge-1.json", false);
+      await createBadgeType(badge, admin, "https://example.com/badge-1.json");
       await badge.connect(minter).mint(alice.address, 1n, 1n, "0x");
 
       await badge.connect(alice).burn(alice.address, 1n, 1n);
@@ -231,7 +236,7 @@ describe("BadgeToken", function () {
   describe("Pause", function () {
     it("blocks minting while paused, and only PAUSER_ROLE can pause", async function () {
       const { badge, admin, pauser, minter, alice } = await networkHelpers.loadFixture(deployBadgeToken);
-      await createBadgeType(badge, admin, "https://example.com/badge-1.json", false);
+      await createBadgeType(badge, admin, "https://example.com/badge-1.json");
 
       await expect(badge.connect(admin).pause())
         .to.be.revertedWithCustomError(badge, "AccessControlUnauthorizedAccount")

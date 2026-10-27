@@ -19,9 +19,9 @@ function envAddressOrDefault(name: string, fallback: string): string {
 // Registering these right after deploy skips the manual admin-panel step
 // for the three badges every deployment needs anyway.
 const KNOWN_BADGES = [
-  { uri: "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/1.json", transferable: false },
-  { uri: "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/2.json", transferable: false },
-  { uri: "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/3.json", transferable: true },
+  "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/1.json",
+  "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/2.json",
+  "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/3.json",
 ] as const;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -30,10 +30,10 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // hit a one-off revert on an otherwise-valid call once already) - retry a
 // few times with a short delay before giving up on a single badge, instead
 // of failing the whole deploy run over a transient hiccup.
-async function createBadgeTypeWithRetry(badge: BadgeToken, uri: string, transferable: boolean, attempts = 3) {
+async function createBadgeTypeWithRetry(badge: BadgeToken, uri: string, attempts = 3) {
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const tx = await badge.createBadgeType(uri, transferable);
+      const tx = await badge.createBadgeType(uri);
       await tx.wait();
       return;
     } catch (error) {
@@ -72,10 +72,11 @@ async function main() {
   // custom BADGE_ADMIN_ADDRESS was set for this deployment.
   if (defaultAdmin.toLowerCase() === deployer.address.toLowerCase()) {
     console.log(`\nRegistering known badge types (A/B/C)...`);
-    for (const { uri, transferable } of KNOWN_BADGES) {
-      await createBadgeTypeWithRetry(badge, uri, transferable);
-      console.log(`  registered: ${uri} (transferable=${transferable})`);
+    for (const uri of KNOWN_BADGES) {
+      await createBadgeTypeWithRetry(badge, uri);
+      console.log(`  registered: ${uri}`);
     }
+    console.log(`\nGlobal transferable switch defaults to false - flip it from the admin panel when needed.`);
   } else {
     console.log(
       `\nSkipping auto-registration of A/B/C: BADGE_ADMIN_ADDRESS differs from the deployer, ` +

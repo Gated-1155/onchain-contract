@@ -6,10 +6,10 @@
 
 ## Polygon Amoy 배포 정보
 
-- **컨트랙트 주소**: [`0xc85B40C6bD74EA71d3f08dBa316539D36DCedbCC`](https://amoy.polygonscan.com/address/0xc85B40C6bD74EA71d3f08dBa316539D36DCedbCC)
-- **배포 스크립트**: `scripts/deploy.ts` (`npm run deploy:amoy`) — 배포 직후 A(id=1, 전송불가)/B(id=2, 전송불가)/C(id=3, 전송가능) 자동 등록까지 완료된 상태
+- **컨트랙트 주소**: [`0x7554b97a7c58dDccc03D5fBFB83DD0710696F59B`](https://amoy.polygonscan.com/address/0x7554b97a7c58dDccc03D5fBFB83DD0710696F59B)
+- **배포 스크립트**: `scripts/deploy.ts` (`npm run deploy:amoy`) — 배포 직후 A(id=1)/B(id=2)/C(id=3) 자동 등록까지 완료된 상태. `transferable`은 배지 타입별이 아니라 컨트랙트 전체에 걸린 단일 스위치이며 기본값 `false`(전송 불가) — 필요 시 관리자 패널에서 한 번에 켠다.
 - **생성자 인자**: `defaultAdmin`/`pauser`/`minter` 전부 배포자 본인 주소(`0x37a3Ed7De6C55C86bc6Bec6035e36885Ab405f80`)로 동일 설정
-- **검증 상태**: Polygonscan에 "Source Code Verified / Exact Match"로 표시됨 (Sourcify 경유). Sourcify 리포지토리: https://sourcify.dev/server/repo-ui/80002/0xc85B40C6bD74EA71d3f08dBa316539D36DCedbCC
+- **검증 상태**: Sourcify 검증 완료. Sourcify 리포지토리: https://sourcify.dev/server/repo-ui/80002/0x7554b97a7c58dDccc03D5fBFB83DD0710696F59B
 - **주의**: `scripts/deploy.ts`는 Ignition이 아니라 일반 스크립트라 재배포 시 새 주소가 생김(journal 없음).
 
 ## 프로젝트 구성

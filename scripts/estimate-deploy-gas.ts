@@ -15,7 +15,7 @@ const deployGasUsed = deployReceipt!.gasUsed;
 console.log(`Deployment gas used: ${deployGasUsed}`);
 
 // Also measure one createBadgeType + one mint, since those will follow deploy.
-const createTx = await badge.createBadgeType("https://example.com/badge-1.json", false);
+const createTx = await badge.createBadgeType("https://example.com/badge-1.json");
 const createReceipt = await createTx.wait();
 console.log(`createBadgeType gas used: ${createReceipt!.gasUsed}`);
 

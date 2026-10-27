@@ -13,20 +13,24 @@ contract BadgeToken is ERC1155, AccessControl, ERC1155Pausable, ERC1155Burnable 
 
     struct BadgeType {
         string uri;
-        bool transferable;
         bool exists;
     }
 
     mapping(uint256 id => BadgeType) private _badgeTypes;
     uint256 private _nextBadgeId = 1;
 
+    // Single contract-wide switch: transfers are either allowed for every
+    // badge type at once or blocked for every badge type at once. There is
+    // no per-id transferability - admin flips one switch, not one per badge.
+    bool public transferable;
+
     error BadgeTypeDoesNotExist(uint256 id);
     error BadgeNotTransferable(uint256 id);
     error ApprovalNotAllowed();
     error InvalidUri();
 
-    event BadgeTypeCreated(uint256 indexed id, string uri, bool transferable);
-    event BadgeTransferabilityUpdated(uint256 indexed id, bool transferable);
+    event BadgeTypeCreated(uint256 indexed id, string uri);
+    event TransferabilityUpdated(bool transferable);
 
     constructor(address defaultAdmin, address pauser, address minter) ERC1155("") {
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
@@ -34,22 +38,16 @@ contract BadgeToken is ERC1155, AccessControl, ERC1155Pausable, ERC1155Burnable 
         _grantRole(MINTER_ROLE, minter);
     }
 
-    function createBadgeType(string calldata uri_, bool transferable_) public onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256 id) {
+    function createBadgeType(string calldata uri_) public onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256 id) {
         _validateUri(uri_);
         id = _nextBadgeId++;
-        _badgeTypes[id] = BadgeType({uri: uri_, transferable: transferable_, exists: true});
-        emit BadgeTypeCreated(id, uri_, transferable_);
+        _badgeTypes[id] = BadgeType({uri: uri_, exists: true});
+        emit BadgeTypeCreated(id, uri_);
     }
 
-    function setTransferable(uint256 id, bool transferable_) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (!_badgeTypes[id].exists) revert BadgeTypeDoesNotExist(id);
-        _badgeTypes[id].transferable = transferable_;
-        emit BadgeTransferabilityUpdated(id, transferable_);
-    }
-
-    function isTransferable(uint256 id) public view returns (bool) {
-        if (!_badgeTypes[id].exists) revert BadgeTypeDoesNotExist(id);
-        return _badgeTypes[id].transferable;
+    function setTransferable(bool transferable_) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        transferable = transferable_;
+        emit TransferabilityUpdated(transferable_);
     }
 
     function uri(uint256 id) public view override returns (string memory) {
@@ -77,18 +75,18 @@ contract BadgeToken is ERC1155, AccessControl, ERC1155Pausable, ERC1155Burnable 
         _mintBatch(to, ids, amounts, data);
     }
 
-    // The following functions are overrides required by Solidity.
-
     function _update(address from, address to, uint256[] memory ids, uint256[] memory values) internal override(ERC1155, ERC1155Pausable) {
+        bool isRealTransfer = from != address(0) && to != address(0);
         for (uint256 i = 0; i < ids.length; i++) {
             if (!_badgeTypes[ids[i]].exists) revert BadgeTypeDoesNotExist(ids[i]);
-            if (from != address(0) && to != address(0) && !_badgeTypes[ids[i]].transferable) {
+            if (isRealTransfer && !transferable) {
                 revert BadgeNotTransferable(ids[i]);
             }
         }
         super._update(from, to, ids, values);
     }
 
+    // The following functions are overrides required by Solidity.
     function supportsInterface(bytes4 interfaceId) public view override(ERC1155, AccessControl) returns (bool) {
         return super.supportsInterface(interfaceId);
     }

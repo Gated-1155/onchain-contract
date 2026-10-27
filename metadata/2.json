@@ -1,7 +1,7 @@
 {
   "name": "Badge B",
   "description": "onchain-toy badge B",
-  "image": "https://raw.githubusercontent.com/onchain-toy/onchain-contract/main/metadata/images/b.svg",
+  "image": "https://raw.githubusercontent.com/Gated-1155/onchain-contract/main/metadata/images/b.svg",
   "attributes": [
     { "trait_type": "Letter", "value": "B" }
   ]
